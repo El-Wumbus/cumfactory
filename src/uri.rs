@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("URI failed to validate")]
@@ -69,6 +70,32 @@ impl<'a> Uri<'a> {
         }
 
         Ok(uri)
+    }
+
+    /// Get the key-value pairs found within the query string
+    ///
+    /// ```rust
+    /// use cumfactory::uri::Uri;
+    ///
+    /// let queries = Uri::new("https://example.com?foo=bar&baz=69420").unwrap().queries();
+    /// assert_eq!(queries.get("foo").unwrap(), "bar");
+    /// assert_eq!(queries.get("baz").unwrap(), "69420");
+    /// ```
+    pub fn queries(&self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        let Some(query_str) = self.query else {
+            return map;
+        };
+        for (key, value) in query_str.split('&').filter_map(|x| x.split_once('=')) {
+            let Some(key) = percent_decode(key) else {
+                continue;
+            };
+            let Some(value) = percent_decode(value) else {
+                continue;
+            };
+            map.insert(key, value);
+        }
+        map
     }
 }
 impl<'a> TryFrom<&'a str> for Uri<'a> {
